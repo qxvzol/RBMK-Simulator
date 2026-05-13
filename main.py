@@ -15,10 +15,10 @@ H_atom_density = values.H.atomic_density
 coolant_frac = values.Dimensions.f_coolant_frac
 
 tick_hf = values.Constants.d_neut_hf * (1/dt)
-d_hf = 0.5**(1/(tick_hf))
+d_hf = 0.5**(1/(tick_hf)) # Multiplier for d_neut population to get desired hf
 
 class Tile:
-    def __init__(self, x, y, z, temp, pressure, void, t_neut_flux, f_neut_flux, fiss_rate, fuel_temp, clad_temp, coolant_temp):
+    def __init__(self, x, y, z, temp, pressure, void, t_neut_flux, f_neut_flux, fiss_rate, fuel_temp, fuel_e, clad_temp, coolant_temp):
         self.x = x
         self.y = y
         self.z = z
@@ -29,6 +29,7 @@ class Tile:
         self.f_neut_flux = f_neut_flux
         self.fiss_rate = fiss_rate
         self.fuel_temp = fuel_temp
+        self.fuel_e = fuel_e
         self.clad_temp = clad_temp
         self.coolant_temp = coolant_temp
 
@@ -37,7 +38,7 @@ for x in range(-rad,rad):
     for y in range(-rad,rad):
         if ((((x+0.5)**2)+((y+0.5)**2))**0.5)<=rad:
             for z in range(0,int(values.Dimensions.height)):
-                tiles[(x,y,z)] = Tile(x, y, z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+                tiles[(x,y,z)] = Tile(x, y, z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
 def ComputeMacroCS(collision, Isotope, volume_frac, density=None):
     if density == None:
@@ -53,12 +54,13 @@ def ComputeMacroCS(collision, Isotope, volume_frac, density=None):
 def ComputeExp(int_rate, dt):
     return 1 - math.exp(-int_rate*dt)
 
-f_neut=1e12
-t_neut=1e12
+f_neut=1e7
+t_neut=5e9
 d_neut=0
-rod_ins=0.00
+rod_ins=0.005
 fission_rate=0
 prev_neut_flux=10000
+fuel_e=0
 while True:
     start = time.time()
     vol=(math.pi * (values.Dimensions.diameter/2)**2 * values.Dimensions.height)*1000**3.0
@@ -95,31 +97,47 @@ while True:
     fission_rate = ComputeMacroCS("interaction", values.U235, values.Dimensions.f_fuel_frac)[0]*values.Constants.t_neut_v
     fission_neut = fission_rate*values.Constants.U_neut_release*(1-values.Constants.U_d_neut_factor)
     #Compute
+    f_neut+=d_neut*(1-d_hf)
+    d_neut*=d_hf #Delayed neut decay
     a = 1 + (-f_abs_total_rate - therm_rate)*ct #Effect of fast neutrons on fast neutron pop
-    b = (fission_neut*values.Constants.non_leak_prob*(1-values.Constants.U_d_neut_factor))*ct #Effect of thermal neutrons on fast neutron pop
+    b = (fission_neut*values.Constants.non_leak_prob)*ct #Effect of thermal neutrons on fast neutron pop
     c = 1 + (-t_abs_total_rate)*ct #Effect of thermal neutrons on thermal neutron pop
     d = (therm_rate*values.Constants.non_leak_prob*values.Constants.res_esc_prob)*ct #Effect of fast neutrons on thermal neutron pop
+    e = fission_rate*values.Constants.non_leak_prob*ct #Effect of thermal neurtons on fission
     # Inital values matrix
     m = np.array([
-        [a, b],
-        [d, c]
+        [a, b, 0],
+        [d, c, 0],
+        [0, e, 1]
     ], dtype=float)
     # Initial neutron populations
+    p=0
     v0 = np.array([
         f_neut,
-        t_neut
+        t_neut,
+        p
     ], dtype=float)
     # Compute new neut populations
     vN = np.linalg.matrix_power(m, int(calc_no)) @ v0
-    f_neut = vN[0]
-    t_neut = vN[1]
-    # D_neut
+    f_neut = float(vN[0])
+    t_neut = float(vN[1])
+    p = float(vN[2])
+    print((p*values.Constants.U_fission_energy/dt)*1e6*728)
+    # Energy calculations
+    d_neut+=(p*values.Constants.U_neut_release*values.Constants.U_d_neut_factor) #delayed neutron gain
+    fuel_e+= (p*values.Constants.U_fission_energy)
+
+    
 
 
+    # Material temp updates
+    fuel_temp = fuel_e/(values.UO2.heat_capacity*values.UO2.density*1000*values.Dimensions.f_fuel_frac)
+    #cool_temp = cool_e/(values.H2O.heat_capacity*values.H2O.density*1000*values.Dimensions.f_coolant_frac)
+    #clad_temp = struc_e/(values.ZR.heat_capacity*values.ZR.density*1000*values.Dimensions.f_struc_frac)
+    #mod_temp = mod_e/(values.GR.heat_capacity*values.GR.density*1000*values.Dimensions.mod_frac)
+    #print(fuel_temp)
 
-
-    print(f_neut,t_neut)
     end=time.time()
-    time.sleep(sim_step / 1000)
+    time.sleep(dt)
     neut_flux=(f_neut+t_neut)
     prev_neut_flux=neut_flux

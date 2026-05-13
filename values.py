@@ -1,14 +1,13 @@
 class Constants:
     energy_thermalise = 18.2 #Ratio = ln(E_f/E_t)
-    f_neut_v = 1.2e7 #m/s
-    t_neut_v = 2.2e3 #m/s
-    U_neut_release = 2.43
-    U_d_neut_factor = 0.01
-    d_neut_hf = 9.0
-    res_esc_prob = 0.86
-    non_leak_prob = 0.86
-    f_neut_life=10e-3
-    t_neut_life=10e-2
+    f_neut_v = 1.2e7 #m/s of fast neut
+    t_neut_v = 2.2e3 #m/s of slow neut
+    U_neut_release = 2.43 #neut/fission
+    U_d_neut_factor = 0.01 #d_neut/fission
+    U_fission_energy=3.2e-11 #energy (J) released per fission
+    d_neut_hf = 9.0 #d_neut half life (s)
+    res_esc_prob = 0.849 #probability of neutron absorption during moderation
+    non_leak_prob = 0.849 #probability of neutron escaping reactor
 
 class Dimensions:
     diameter = 12 #m int
@@ -122,8 +121,15 @@ ZR = Material(
     285.0
 )
 
-GRAPHITE = Material(
+GR = Material(
     1.6,
     100.0,
     710.0
 )
+
+Materials = {
+    "UO2": UO2,
+    "H2O": H2O,
+    "ZR": ZR,
+    "GRAPHITE":GR
+}
