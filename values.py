@@ -1,24 +1,33 @@
 class Constants:
+    # Neutron simulation constants
     energy_thermalise = 18.2 #Ratio = ln(E_f/E_t)
     f_neut_v = 1.2e7 #m/s of fast neut
     t_neut_v = 2.2e3 #m/s of slow neut
-    U_neut_release = 2.43 #neut/fission
-    U_d_neut_factor = 0.01 #d_neut/fission
-    U_fission_energy=3.2e-11 #energy (J) released per fission
-    d_neut_hf = 9.0 #d_neut half life (s)
     res_esc_prob = 0.849 #probability of neutron absorption during moderation
     non_leak_prob = 0.849 #probability of neutron escaping reactor
+    # Fission constants
+    neut_prod = 2.43 #neut/fission
+    d_neut_factor = 0.01 #d_neut/fission
+    fission_energy=3.2e-11 #energy (J) released per fission
+    d_neut_hf = 9.0 #d_neut half life (s)
+    # Poison constants
+    i135_hf = 6.5 #I-135 half life (h)
+    xe135_hf = 9.0 #Xe-135 half life (h)
+    i135_prod = 0.065
+    xe135_prod = 0.003
 
 class Dimensions:
     diameter = 12 #m int
     height = 7 #m int
 
-    mod_frac = 0.91
     fuel_channels = 1500
     control_channels = 300
-    f_fuel_frac = 0.04
-    f_coolant_frac = 0.04
-    f_struc_frac = 0.01
+    f_sa = 12.0 # Surface area of fuel rods (radially) per m^2
+    clad_length = 0.01 # Length between fuel and coolant, of cladding (m)
+    mod_frac = 0.91 # Fraction of moderator in whole reactor
+    f_fuel_frac = 0.04 # Fraction of fuel in whole reactor
+    f_coolant_frac = 0.04 # Fraction of coolant in whole reactor
+    f_struc_frac = 0.01 # Fraction of structure in whole reactor
 
 class Isotope:
     def __init__(self, atomic_density, thermal_absorption_cs, thermal_interaction_cs, fast_absorption_cs, fast_interaction_cs, interaction):

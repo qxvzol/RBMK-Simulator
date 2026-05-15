@@ -14,8 +14,6 @@ warp = 1
 H_atom_density = values.H.atomic_density
 coolant_frac = values.Dimensions.f_coolant_frac
 
-tick_hf = values.Constants.d_neut_hf * (1/dt)
-d_hf = 0.5**(1/(tick_hf)) # Multiplier for d_neut population to get desired hf
 
 class Tile:
     def __init__(self, x, y, z, temp, pressure, void, t_neut_flux, f_neut_flux, fiss_rate, fuel_temp, fuel_e, clad_temp, coolant_temp):
@@ -40,7 +38,7 @@ for x in range(-rad,rad):
             for z in range(0,int(values.Dimensions.height)):
                 tiles[(x,y,z)] = Tile(x, y, z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
-def ComputeMacroCS(collision, Isotope, volume_frac, density=None):
+def ComputeMacroCS(collision, Isotope, volume_frac, density=None): #Calculates macroscopic cross section of desired isotope
     if density == None:
         density = Isotope.atomic_density
     if collision == "absorption":
@@ -51,23 +49,38 @@ def ComputeMacroCS(collision, Isotope, volume_frac, density=None):
         f_neut_int = density * Isotope.fast_interaction_cs * volume_frac
     return t_neut_int, f_neut_int
 
-def ComputeExp(int_rate, dt):
-    return 1 - math.exp(-int_rate*dt)
+def ComputeHfMult(half_life, dt, warp): #Calculates multiplier to get desired half life
+    hf = 0.5**(1/(half_life * (1/dt/warp)))
+    return hf
 
+#Variable definitions
 f_neut=1e7
 t_neut=5e9
 d_neut=0
-rod_ins=0.005
+rod_ins=0.00
 fission_rate=0
 prev_neut_flux=10000
 fuel_e=0
+xe135=0
+i135=0
+cool_e=0
 while True:
+    pres=22000000
+    bp=1/(1/373-(math.log(pres/101325))/4890)
+    print(bp-273.15)
+
+    d_hf = ComputeHfMult(values.Constants.d_neut_hf, dt, warp)
+    xe135_hf = ComputeHfMult(values.Constants.xe135_hf*3600, dt, warp)
+    i135_hf = ComputeHfMult(values.Constants.i135_hf*3600, dt, warp)
+
+    f_neut=1e7
+    t_neut=5e9
     start = time.time()
     vol=(math.pi * (values.Dimensions.diameter/2)**2 * values.Dimensions.height)*1000**3.0
     f_abs,t_abs = 0,0
     prob = {}
 
-    #Isotope Neutron Absorption
+    # Total isotope neutron absorption calculation
     f_abs_total_rate=0
     t_abs_total_rate=0
     for Name, Isotope in values.Isotopes.items():
@@ -80,23 +93,27 @@ while True:
         elif Name=="B":
             volume_frac = rod_ins
         elif Name=="XE":  
-            volume_frac = 0.0
+            volume_frac = 1.0
         else:
             volume_frac = 0
-        f_abs_rate=ComputeMacroCS("absorption", Isotope, volume_frac)[1]*values.Constants.f_neut_v
-        t_abs_rate=ComputeMacroCS("absorption", Isotope, volume_frac)[0]*values.Constants.t_neut_v
+        if Name=="XE":
+            density=xe135
+        else:
+            density=None
+        f_abs_rate=ComputeMacroCS("absorption", Isotope, volume_frac, density)[1]*values.Constants.f_neut_v
+        t_abs_rate=ComputeMacroCS("absorption", Isotope, volume_frac, density)[0]*values.Constants.t_neut_v
         f_abs_total_rate += f_abs_rate
         t_abs_total_rate += t_abs_rate
 
-    #Neutron Moderation
+    # Neutron moderation
     scatter_c = ComputeMacroCS("interaction", values.C, values.Dimensions.mod_frac)[1]*values.Constants.f_neut_v
     scatter_h = ComputeMacroCS("interaction", values.H, coolant_frac, H_atom_density)[1]*values.Constants.f_neut_v
     e_loss = scatter_c*values.Moderator.C + scatter_h*values.Moderator.H
     therm_rate=e_loss/values.Constants.energy_thermalise
-    #Fission
+    # Fission
     fission_rate = ComputeMacroCS("interaction", values.U235, values.Dimensions.f_fuel_frac)[0]*values.Constants.t_neut_v
-    fission_neut = fission_rate*values.Constants.U_neut_release*(1-values.Constants.U_d_neut_factor)
-    #Compute
+    fission_neut = fission_rate*values.Constants.neut_prod*(1-values.Constants.d_neut_factor)
+    # Computing affects of absorption/moderation/fission on neutron population
     f_neut+=d_neut*(1-d_hf)
     d_neut*=d_hf #Delayed neut decay
     a = 1 + (-f_abs_total_rate - therm_rate)*ct #Effect of fast neutrons on fast neutron pop
@@ -118,25 +135,36 @@ while True:
         p
     ], dtype=float)
     # Compute new neut populations
-    vN = np.linalg.matrix_power(m, int(calc_no)) @ v0
+    vN = np.linalg.matrix_power(m, int(calc_no*warp)) @ v0
     f_neut = float(vN[0])
     t_neut = float(vN[1])
     p = float(vN[2])
-    print((p*values.Constants.U_fission_energy/dt)*1e6*728)
+    # Reactor poison calculations
+    macro_xe=ComputeMacroCS("absorption", values.XE, 1.0, xe135)[0]*values.Constants.t_neut_v
+    macro_fis=ComputeMacroCS("interaction", values.U235, values.Dimensions.f_fuel_frac)[0]*values.Constants.t_neut_v
+    int_xe=p*(macro_xe/macro_fis)
+    xe135-=int_xe
+    xe135 += p*values.Constants.xe135_prod
+    i135 += p*values.Constants.i135_prod
+    i135*=i135_hf
+    xe135*=xe135_hf
     # Energy calculations
-    d_neut+=(p*values.Constants.U_neut_release*values.Constants.U_d_neut_factor) #delayed neutron gain
-    fuel_e+= (p*values.Constants.U_fission_energy)
+    d_neut+=(p*values.Constants.neut_prod*values.Constants.d_neut_factor) #delayed neutron gain
+    fuel_e+= (p*values.Constants.fission_energy*10e6)
 
-    
+
 
 
     # Material temp updates
     fuel_temp = fuel_e/(values.UO2.heat_capacity*values.UO2.density*1000*values.Dimensions.f_fuel_frac)
-    #cool_temp = cool_e/(values.H2O.heat_capacity*values.H2O.density*1000*values.Dimensions.f_coolant_frac)
+    cool_temp = cool_e/(values.H2O.heat_capacity*values.H2O.density*1000*values.Dimensions.f_coolant_frac)
     #clad_temp = struc_e/(values.ZR.heat_capacity*values.ZR.density*1000*values.Dimensions.f_struc_frac)
     #mod_temp = mod_e/(values.GR.heat_capacity*values.GR.density*1000*values.Dimensions.mod_frac)
-    #print(fuel_temp)
-
+    # Material energy transfers
+    cool_temp=100
+    f_c_transfer=((fuel_temp-cool_temp)/values.Dimensions.clad_length)*values.ZR.conductivity*values.Dimensions.f_sa
+    fuel_e-=f_c_transfer
+    cool_e+=f_c_transfer
     end=time.time()
     time.sleep(dt)
     neut_flux=(f_neut+t_neut)
