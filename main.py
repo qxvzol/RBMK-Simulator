@@ -10,7 +10,7 @@ calc_step = 0.01 #ms Timestep between neutron calculation steps (factor of sim_s
 dt = sim_step / 1000
 ct = calc_step / 1000
 calc_no = dt/ct
-warp = 1
+warp = 1 # Accelerates/Slows all processes in reactor. Do not put too high (0.1-100)
 H_atom_density = values.H.atomic_density
 coolant_frac = values.Dimensions.f_coolant_frac
 
@@ -53,7 +53,14 @@ def ComputeHfMult(half_life, dt, warp): #Calculates multiplier to get desired ha
     hf = 0.5**(1/(half_life * (1/dt/warp)))
     return hf
 
-#Variable definitions
+def clamp(value,min,max):
+    if value>max:
+        value=max
+    elif value<min:
+        value=min
+    return value
+
+#Variable definitions (Probably remove later)
 f_neut=1e7
 t_neut=5e9
 d_neut=0
@@ -64,17 +71,22 @@ fuel_e=0
 xe135=0
 i135=0
 cool_e=0
+enthalpy=0
+cool_temp=0
+steam=0
+prev_temp=0
+pres=9e6
+steam_mass=0
+water_mass=0
 while True:
-    pres=22000000
     bp=1/(1/373-(math.log(pres/101325))/4890)
-    print(bp-273.15)
 
     d_hf = ComputeHfMult(values.Constants.d_neut_hf, dt, warp)
     xe135_hf = ComputeHfMult(values.Constants.xe135_hf*3600, dt, warp)
     i135_hf = ComputeHfMult(values.Constants.i135_hf*3600, dt, warp)
 
-    f_neut=1e7
-    t_neut=5e9
+    f_neut=5e6
+    t_neut=1e9
     start = time.time()
     vol=(math.pi * (values.Dimensions.diameter/2)**2 * values.Dimensions.height)*1000**3.0
     f_abs,t_abs = 0,0
@@ -151,20 +163,32 @@ while True:
     # Energy calculations
     d_neut+=(p*values.Constants.neut_prod*values.Constants.d_neut_factor) #delayed neutron gain
     fuel_e+= (p*values.Constants.fission_energy*10e6)
-
+    req_sense=(bp)*values.H2O.heat_capacity*values.H2O.density*1000*coolant_frac
+    req_latent=values.H2O.latent_heat*values.H2O.density*1000*coolant_frac
+    latent_e=clamp(enthalpy-req_sense,0,req_latent)
+    sens_e=enthalpy-latent_e
+    steam=latent_e/req_latent
 
 
 
     # Material temp updates
     fuel_temp = fuel_e/(values.UO2.heat_capacity*values.UO2.density*1000*values.Dimensions.f_fuel_frac)
-    cool_temp = cool_e/(values.H2O.heat_capacity*values.H2O.density*1000*values.Dimensions.f_coolant_frac)
+    cool_temp = sens_e/(values.H2O.heat_capacity*values.H2O.density*1000*values.Dimensions.f_coolant_frac)
     #clad_temp = struc_e/(values.ZR.heat_capacity*values.ZR.density*1000*values.Dimensions.f_struc_frac)
     #mod_temp = mod_e/(values.GR.heat_capacity*values.GR.density*1000*values.Dimensions.mod_frac)
+    #print("ENTH",enthalpy, bp-273.15)
+    #print("REQ",req_latent,req_sense)
+    print("ENG",latent_e,sens_e)
+    print("TEMP",cool_temp-273.15,steam, fuel_temp)
+    print((cool_temp-prev_temp)/dt)
+    prev_temp=cool_temp
+
     # Material energy transfers
-    cool_temp=100
-    f_c_transfer=((fuel_temp-cool_temp)/values.Dimensions.clad_length)*values.ZR.conductivity*values.Dimensions.f_sa
+    cool_temp=0
+    f_c_transfer=((fuel_temp-cool_temp)/values.Dimensions.clad_length)*values.ZR.conductivity*values.Dimensions.f_sa*dt*warp
     fuel_e-=f_c_transfer
-    cool_e+=f_c_transfer
+    print(f_c_transfer/10e6)
+    enthalpy+=f_c_transfer
     end=time.time()
     time.sleep(dt)
     neut_flux=(f_neut+t_neut)

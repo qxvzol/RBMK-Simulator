@@ -39,10 +39,11 @@ class Isotope:
         self.interaction = interaction
 
 class Material:
-    def __init__(self, density, conductivity, heat_capacity):
+    def __init__(self, density, conductivity, heat_capacity, latent_heat):
         self.density = density #t/m^3
         self.conductivity = conductivity #W/mK
         self.heat_capacity = heat_capacity #J/KgK
+        self.latent_heat = latent_heat #J/Kg
 
 class Moderator:
     H = 1.0
@@ -115,25 +116,29 @@ Isotopes = {
 UO2 = Material(
     10.9,
     2.5,
-    270.0
+    270.0,
+    270000
 )
 
 H2O = Material(
     1.0,
     0.6,
-    4180.0
+    4180.0,
+    2260000
 )
 
 ZR = Material(
     6.5,
     16.0,
-    285.0
+    285.0,
+    224000
 )
 
 GR = Material(
     1.6,
     100.0,
-    710.0
+    710.0,
+    59000000
 )
 
 Materials = {

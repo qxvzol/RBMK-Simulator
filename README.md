@@ -8,9 +8,10 @@
 - Affects from various other factors, e.g. Doppler effect at different temp. and steam void formation
 - Xenon production and poisoning
 - **Testing**: Checking neutron behaviour when left on own, checking reactivity, checking how changing factors affect behaviour
-#### Steam formation: Incomplete
+#### Steam formation: Complete (?)
+- Below bp, energy increases water temp
 - Dependent on pressure and temperature of water
-- Absorbs excess energy to boil based on specific latent heat
+- Absorbs energy to boil based on specific latent heat once reaching bp
 - Forms steam which increases pressure, decreases neutron absorption
 - Regulated by steam drums (steam output to turbines)
 - **Testing**: Checking if steam formation accurate at varying temperatures and energy outputs, as well as steam effects on pressure an neutron behaviour
