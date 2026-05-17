@@ -35,3 +35,11 @@
 - Accelerates all processes in reactor without affecting simulation tick length
 - Allows for "faster reactor" without increasing simulation cost
 - **Testing**: Ensuring all processes run as expected when timewarping
+<br>
+
+## Current focus: Pressure and fluid flow simulation:
+- Each tile given pressure values, and independent values for water/steam: volume, mass, velocity, density, temperature, energy, etc.
+- Some of these values are stored, the rest are recalculated each tick
+- Pressure split into "baseline" and "gradient"
+- Forces such as friction, work against gravity, and the pump causes a gradient to emerge across the reactor
+- The baseline pressure is determined by the pressure the gas is at in the reactor (how much it is compressed)

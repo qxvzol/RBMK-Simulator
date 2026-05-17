@@ -2,6 +2,8 @@ import math
 import time
 import numpy as np
 import values
+from pyXSteam.XSteam import XSteam
+steamTable = XSteam(XSteam.UNIT_SYSTEM_BARE)
 
 tiles={}
 prob={}
@@ -73,13 +75,15 @@ i135=0
 cool_e=0
 enthalpy=0
 cool_temp=0
-steam=0
 prev_temp=0
-pres=9e6
+pres=7
 steam_mass=0
 water_mass=0
+
+print(steamTable.tsat_p(pres)-273.15)
+
 while True:
-    bp=1/(1/373-(math.log(pres/101325))/4890)
+    bp=steamTable.tsat_p(pres)-273.15
 
     d_hf = ComputeHfMult(values.Constants.d_neut_hf, dt, warp)
     xe135_hf = ComputeHfMult(values.Constants.xe135_hf*3600, dt, warp)
@@ -178,16 +182,12 @@ while True:
     #mod_temp = mod_e/(values.GR.heat_capacity*values.GR.density*1000*values.Dimensions.mod_frac)
     #print("ENTH",enthalpy, bp-273.15)
     #print("REQ",req_latent,req_sense)
-    print("ENG",latent_e,sens_e)
-    print("TEMP",cool_temp-273.15,steam, fuel_temp)
-    print((cool_temp-prev_temp)/dt)
     prev_temp=cool_temp
 
     # Material energy transfers
     cool_temp=0
     f_c_transfer=((fuel_temp-cool_temp)/values.Dimensions.clad_length)*values.ZR.conductivity*values.Dimensions.f_sa*dt*warp
     fuel_e-=f_c_transfer
-    print(f_c_transfer/10e6)
     enthalpy+=f_c_transfer
     end=time.time()
     time.sleep(dt)
