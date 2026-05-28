@@ -15,18 +15,21 @@ class Constants:
     xe135_hf = 9.0 #Xe-135 half life (h)
     i135_prod = 0.065
     xe135_prod = 0.003
+    # Fluid constants
+    compressibility = 1.15e-9 #Compressibility of water (285c+7Mpa), Pa^-1
+    # Other
+    grav = 9.8 #m/s^2
 
 class Dimensions:
     diameter = 12 #m int
     height = 7 #m int
 
-    fuel_channels = 1500
-    control_channels = 300
+    hydr_diam = 0.00837 #m Hydraulic diameter of coolant channels
     f_sa = 12.0 # Surface area of fuel rods (radially) per m^2
     clad_length = 0.01 # Length between fuel and coolant, of cladding (m)
     mod_frac = 0.91 # Fraction of moderator in whole reactor
     f_fuel_frac = 0.04 # Fraction of fuel in whole reactor
-    f_coolant_frac = 0.04 # Fraction of coolant in whole reactor
+    channel_frac = 0.04 # Fraction of coolant in whole reactor
     f_struc_frac = 0.01 # Fraction of structure in whole reactor
 
 class Isotope:

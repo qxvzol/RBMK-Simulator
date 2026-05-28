@@ -43,3 +43,17 @@
 - Pressure split into "baseline" and "gradient"
 - Forces such as friction, work against gravity, and the pump causes a gradient to emerge across the reactor
 - The baseline pressure is determined by the pressure the gas is at in the reactor (how much it is compressed)
+### Baseline pressure:
+- calculated by getting saturated steam's specific volume, given the mass of steam and volume of steam. Baseline pressure is calculated across reactor, and uses total mass/volume of steam across all reactor (not individual tiles)
+- Volume of steam = total volume - water volume.
+- Water volume is known given water mass and water density
+### Gradient pressure:
+- Pressure at top/in drums and pressure at bottom is equal across diameter of reactor
+- Pressure at top is known based on baseline pressure
+- Pressure at bottom is calculated as baseline pressure + pump outlet pressure
+- Pressure decrease from bottom of channel to top calculated as a result of work against gravity, friction, acceleration, etc.
+- This is calculated using the drift flux model; water and steam is treated as a homogenous fluid in most circumstances
+- Drift flux model still allows for steam to travel upwards through reactor faster
+- If pressure at top of channel does not equal pressure at top of reactor, flow rate in said channel is adjusted (each tick) until pressure is equal
+- Mass flux/flow rate is the same vertically across whole channel
+- Valves at bottom of channels attempt to maintaing similar temps by throttling fluid flow (causing pressure reduction)
