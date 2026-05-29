@@ -55,6 +55,10 @@ def ComputeHfMult(half_life, dt, warp): #Calculates multiplier to get desired ha
     hf = 0.5**(1/(half_life * (1/dt/warp)))
     return hf
 
+def ComputeTemp(energy, material, fraction):
+    temp = energy/(material.heat_capacity*material.density*1000*fraction)
+    return temp
+
 def clamp(value,min,max):
     if value>max:
         value=max
@@ -176,8 +180,8 @@ while True:
 
 
     # Material temp updates
-    fuel_temp = fuel_e/(values.UO2.heat_capacity*values.UO2.density*1000*values.Dimensions.f_fuel_frac)
-    cool_temp = sens_e/(values.H2O.heat_capacity*values.H2O.density*1000*values.Dimensions.f_coolant_frac)
+    fuel_temp = ComputeTemp(fuel_e, values.UO2, values.Dimensions.f_fuel_frac)
+    cool_temp = ComputeTemp(sens_e, values.H2O, values.Dimensions.f_coolant_frac)
     #clad_temp = struc_e/(values.ZR.heat_capacity*values.ZR.density*1000*values.Dimensions.f_struc_frac)
     #mod_temp = mod_e/(values.GR.heat_capacity*values.GR.density*1000*values.Dimensions.mod_frac)
     #print("ENTH",enthalpy, bp-273.15)

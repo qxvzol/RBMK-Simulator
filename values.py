@@ -1,4 +1,7 @@
 class Constants:
+    # Simulation constants
+    sim_step = 10 #ms Timestep between ticks in simulation
+    calc_step = 0.01 #ms Timestep between neutron calculation steps (factor of sim_step)
     # Neutron simulation constants
     energy_thermalise = 18.2 #Ratio = ln(E_f/E_t)
     f_neut_v = 1.2e7 #m/s of fast neut
@@ -15,15 +18,21 @@ class Constants:
     xe135_hf = 9.0 #Xe-135 half life (h)
     i135_prod = 0.065
     xe135_prod = 0.003
-    # Fluid constants
-    compressibility = 1.15e-9 #Compressibility of water (285c+7Mpa), Pa^-1
     # Other
     grav = 9.8 #m/s^2
+    pump_constant = 4.7e-9 #Arbitrary constant for pump power
+    heat_constant = 1000 #Arbitrary constant for heat transfer
+    inital_temp = 100 #C
 
 class Dimensions:
     diameter = 12 #m int
     height = 7 #m int
 
+    fuel_clad_contact = 11.6 #m^2/m^3 Contact area between fuel and coolant per m^3 of reactor
+    clad_cool_contact = 11.8 #m^2/m^3 Contact area between cladding and coolant per m^3 of reactor
+    cool_graph_contact = 4.2 #m^2/m^3 Contact area between coolant and graphite per m^3 of reactor
+
+    pump_power = 4.3 #MW Directly affects pump pressure gradient
     hydr_diam = 0.00837 #m Hydraulic diameter of coolant channels
     f_sa = 12.0 # Surface area of fuel rods (radially) per m^2
     clad_length = 0.01 # Length between fuel and coolant, of cladding (m)
