@@ -2,7 +2,6 @@ import time
 
 from scipy.optimize import fsolve
 from pyXSteam.XSteam import XSteam
-from simple_pid import PID
 
 import values
 steamTable = XSteam(XSteam.UNIT_SYSTEM_BARE)
@@ -14,7 +13,6 @@ p_pump=0.3
 
 tiles={}
 
-flow_pid = PID(5, 0, 0.5, setpoint=0)
 
 class Tile:
     def __init__(self, x, y, z, fuel_e=0, clad_e=0, coolant_e=0, graph_e=0, pressure=7, void=0, t_neut_density=0, f_neut_density=0, fiss_rate=0, mass_v=0, mass_l=40, momentum_density=0):
@@ -41,9 +39,9 @@ for z in range(0,7):
     tiles[(1,1,z)] = Tile(1,1,z)
 
 def clamp(value,min,max):
-    if value>max:
+    if (value>max) and max!=None:
         value=max
-    elif value<min:
+    elif value<min and min!=None:
         value=min
     return value
 
@@ -69,10 +67,13 @@ for tile in tiles.values():
     tile.graph_e=values.GR.heat_capacity*values.GR.density*1000*values.Dimensions.mod_frac*(values.Constants.inital_temp+273.15)
 
 cool_temp=293.15+100
+
+"""
 while True:
     tile=tiles[(1,1,z)]
     baseline_pressure=7
-    water_shc = steamTable.Cp_pt(7, cool_temp)*1000
+    #water_shc = steamTable.Cp_pt(7, cool_temp)*1000 NEEDS FIXING
+    water_shc = 4850
     water_shc=clamp(water_shc,2500,5500)
 
     # Water boiling/temperature calculations
@@ -94,6 +95,7 @@ while True:
     # Thermal conduction
     thermal_conductance_fc = values.Dimensions.fuel_clad_contact/(1/values.UO2.conductivity+1/values.ZR.conductivity)
     fuel_clad_q = values.Constants.heat_constant*thermal_conductance_fc*(fuel_temp-clad_temp)
+    fuel_clad_q = clamp(fuel_clad_q, -tile.clad_e/(values.Constants.sim_step/1000), tile.fuel_e/(values.Constants.sim_step/1000))
     thermal_conductance_cc = values.Dimensions.clad_cool_contact/(1/values.ZR.conductivity+1/values.H2O.conductivity)
     clad_cool_q = values.Constants.heat_constant*thermal_conductance_cc*(clad_temp-cool_temp)
     thermal_conductance_cg = values.Dimensions.cool_graph_contact/(1/values.H2O.conductivity+1/values.GR.conductivity)
@@ -114,9 +116,10 @@ while True:
 
     time.sleep(values.Constants.sim_step/1000)
 
-
+"""
 mass_flux=2000
 flow=8000
+p_top_prev=None
 while True:
     baseline_pressure=fsolve(f, 7.0)[0]
     control_power=0.8
@@ -166,9 +169,16 @@ while True:
         dens_m = void*dens_g + (1-void)*dens_l
         p_fric=2*darcy_fric*mass_flux**2/(values.Dimensions.hydr_diam*dens_m)
 
+        #Valve pressure losses
+        if pos[2]==0:
+            valve_constant=1
+            p_valve=valve_constant*(mass_flux**2/dens_l)
+        else:
+            p_valve=0
         # Gravity pressure loss
         p_grav=values.Constants.grav*dens_m
-        p_total=(p_fric+p_accel+p_grav)/1e6 #MPa
+
+        p_total=(p_fric+p_accel+p_grav+p_valve)/1e6 #MPa
 
         # Dynamic pressure adjustment
         if pos[2]==0:
@@ -176,9 +186,13 @@ while True:
         else:
             tile.pressure=tiles[(pos[0], pos[1], pos[2]-1)].pressure-p_total
 
-    print(tiles[(1,1,6)].pressure, mass_flux)
     p_top_channel = tiles[(1,1,6)].pressure
-    flow_adjust = flow_pid(p_top_channel)
+    if p_top_prev==None:
+        p_top_prev=p_top
+    delta_p_top = p_top-p_top_prev
+    p_top_prev = p_top
+    flow_adjust = (p_top_channel*values.Constants.flow_p)+(delta_p_top*values.Constants.flow_d)
     flow_adjust=clamp(flow_adjust,-100,100)
     mass_flux-=flow_adjust
     mass_flux=clamp(mass_flux,100,10000)
+

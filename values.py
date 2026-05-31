@@ -18,9 +18,13 @@ class Constants:
     xe135_hf = 9.0 #Xe-135 half life (h)
     i135_prod = 0.065
     xe135_prod = 0.003
+    # Fluid simulation constants
+    pump_constant = 4.7e-9 #Arbitrary constant for pump power
+    flow_p = -4 #Proportional constant for flow PD
+    flow_d = 10 #Derivative constant for flow PD
+
     # Other
     grav = 9.8 #m/s^2
-    pump_constant = 4.7e-9 #Arbitrary constant for pump power
     heat_constant = 1000 #Arbitrary constant for heat transfer
     inital_temp = 100 #C
 
